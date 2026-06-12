@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Скидки Казахстана — акции, бонусы, распродажи</title>
+<style>
+  :root{
+    --bg:#0e1116; --card:#171b22; --card2:#1d222b; --line:#262c37;
+    --txt:#e8ecf2; --muted:#9aa4b2; --accent:#ffd33d; --accent2:#28c76f;
+    --red:#ff5c5c; --blue:#4d9bff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--txt);line-height:1.5}
+  header{padding:28px 20px 16px;text-align:center;border-bottom:1px solid var(--line);
+         background:linear-gradient(180deg,#141923,#0e1116)}
+  header h1{margin:0;font-size:26px;letter-spacing:.3px}
+  header h1 span{color:var(--accent)}
+  .sub{color:var(--muted);font-size:14px;margin-top:6px}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px}
+  .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px}
+  .filters select,.filters input{background:var(--card2);border:1px solid var(--line);color:var(--txt);
+       padding:9px 12px;border-radius:10px;font-size:14px;outline:none}
+  .filters input{flex:1;min-width:180px}
+  .count{color:var(--muted);font-size:13px;margin-left:auto}
+  .tagbar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+  .chip{background:var(--card2);border:1px solid var(--line);color:var(--muted);
+        font-size:13px;padding:6px 12px;border-radius:20px;cursor:pointer;
+        user-select:none;transition:.12s}
+  .chip:hover{border-color:#3a4250;color:var(--txt)}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:#1a1300;font-weight:700}
+  .card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+  .tg{font-size:10px;background:rgba(255,211,61,.12);color:var(--accent);
+      border:1px solid rgba(255,211,61,.25);padding:2px 7px;border-radius:12px;
+      cursor:pointer;white-space:nowrap}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;
+        display:flex;flex-direction:column;gap:8px;transition:.15s;position:relative;overflow:hidden}
+  .card:hover{border-color:#39414f;transform:translateY(-2px)}
+  .badges{display:flex;gap:6px;flex-wrap:wrap}
+  .badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap}
+  .b-type{background:rgba(77,155,255,.15);color:var(--blue)}
+  .b-city{background:rgba(154,164,178,.15);color:var(--muted)}
+  .b-fresh{background:rgba(40,199,111,.15);color:var(--accent2)}
+  .b-fresh.warn{background:rgba(255,211,61,.15);color:var(--accent)}
+  .b-fresh.soon{background:rgba(255,92,92,.15);color:var(--red)}
+  .disc{position:absolute;top:14px;right:14px;background:var(--accent);color:#1a1300;
+        font-weight:800;font-size:14px;padding:4px 10px;border-radius:10px}
+  .title{font-size:16px;font-weight:700;margin:2px 0 0;padding-right:60px}
+  .desc{font-size:13px;color:var(--muted);flex:1}
+  .price{display:flex;align-items:baseline;gap:8px}
+  .price .new{font-size:18px;font-weight:800;color:var(--accent2)}
+  .price .old{font-size:13px;color:var(--muted);text-decoration:line-through}
+  .foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);
+        padding-top:10px;margin-top:2px}
+  .src{font-size:12px;color:var(--muted)}
+  .go{font-size:13px;color:var(--accent);text-decoration:none;font-weight:600}
+  .go:hover{text-decoration:underline}
+  .empty{text-align:center;color:var(--muted);padding:60px 20px}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
+  @media(max-width:520px){.count{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1><span>Скидки</span> Казахстана</h1>
+  <div class="sub">Акции, бонусы, распродажи и купоны со всей страны — по категориям, городам и актуальности</div>
+</header>
+
+<div class="wrap">
+  <div class="filters">
+    <input id="search" placeholder="Поиск: название, магазин...">
+    <select id="category"><option value="">Все категории</option></select>
+    <select id="city"><option value="">Все города</option></select>
+    <select id="type"><option value="">Все типы</option></select>
+    <select id="fresh">
+      <option value="">Любая актуальность</option>
+      <option value="Заканчивается">Заканчивается (≤2 дн.)</option>
+      <option value="На этой неделе">На этой неделе</option>
+      <option value="Действует">Действует</option>
+      <option value="Бессрочно">Бессрочно</option>
+    </select>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="tagbar" id="tagbar"></div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">Ничего не найдено. Измените фильтры.</div>
+</div>
+
+<footer>
+  Обновлено: <span id="updated">—</span> · Источник данных: парсер скидок ·
+  <a class="go" href="#" id="tg">Telegram-канал</a>
+</footer>
+
+<script>
+let DEALS = [];
+let ACTIVE_TAGS = new Set();
+
+function fmtPrice(n){ return n == null ? "" : new Intl.NumberFormat("ru-RU").format(n) + " ₸"; }
+
+function toggleTag(tag){
+  if(ACTIVE_TAGS.has(tag)) ACTIVE_TAGS.delete(tag);
+  else ACTIVE_TAGS.add(tag);
+  buildTagbar();
+  render();
+}
+
+function buildTagbar(){
+  const bar = document.getElementById("tagbar");
+  bar.innerHTML = "";
+  ALL_TAGS.forEach(tag => {
+    const c = document.createElement("span");
+    c.className = "chip" + (ACTIVE_TAGS.has(tag) ? " active" : "");
+    c.textContent = tag;
+    c.onclick = () => toggleTag(tag);
+    bar.appendChild(c);
+  });
+}
+let ALL_TAGS = [];
+
+function freshClass(f){
+  if(f === "Заканчивается") return "b-fresh soon";
+  if(f === "На этой неделе") return "b-fresh warn";
+  return "b-fresh";
+}
+
+function fill(sel, items){
+  const el = document.getElementById(sel);
+  items.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = v; el.appendChild(o); });
+}
+
+function render(){
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const cat = document.getElementById("category").value;
+  const city = document.getElementById("city").value;
+  const type = document.getElementById("type").value;
+  const fresh = document.getElementById("fresh").value;
+
+  const list = DEALS.filter(d => {
+    if(cat && d.category !== cat) return false;
+    if(city && d.city !== city && d.city !== "Вся страна") return false;
+    if(type && d.deal_type !== type) return false;
+    if(fresh && d.freshness !== fresh) return false;
+    if(ACTIVE_TAGS.size){
+      const dtags = d.tags || [];
+      if(![...ACTIVE_TAGS].some(t => dtags.includes(t))) return false;
+    }
+    if(q){
+      const hay = (d.title + " " + d.source + " " + (d.description||"")).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  document.getElementById("empty").style.display = list.length ? "none" : "block";
+  document.getElementById("count").textContent = list.length + " из " + DEALS.length;
+
+  list.forEach(d => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const price = (d.new_price != null) ? `<div class="price"><span class="new">${fmtPrice(d.new_price)}</span>${d.old_price!=null?`<span class="old">${fmtPrice(d.old_price)}</span>`:""}</div>` : "";
+    card.innerHTML = `
+      ${d.discount ? `<div class="disc">${d.discount}</div>` : ""}
+      <div class="badges">
+        <span class="badge b-type">${d.deal_type}</span>
+        <span class="badge b-city">${d.city}</span>
+        <span class="badge ${freshClass(d.freshness)}">${d.freshness}${d.days_left!=null && d.days_left>=0 ? " · "+d.days_left+" дн." : ""}</span>
+      </div>
+      <div class="title">${d.title}</div>
+      <div class="desc">${d.description||""}</div>
+      ${(d.tags&&d.tags.length)?`<div class="card-tags">${d.tags.map(t=>`<span class="tg" data-tag="${t}">${t}</span>`).join("")}</div>`:""}
+      ${price}
+      <div class="foot">
+        <span class="src">${d.source} · ${d.category}</span>
+        <a class="go" href="${d.url}" target="_blank" rel="noopener">Открыть →</a>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+fetch("data.json")
+  .then(r => r.json())
+  .then(data => {
+    DEALS = data.deals || [];
+    ALL_TAGS = data.tags || [];
+    fill("category", data.categories || []);
+    fill("city", (data.cities || []).filter(c => c !== "Вся страна"));
+    fill("type", data.types || []);
+    document.getElementById("updated").textContent =
+      data.updated_at ? new Date(data.updated_at).toLocaleString("ru-RU") : "—";
+    buildTagbar();
+    render();
+  })
+  .catch(() => { document.getElementById("empty").style.display = "block";
+                 document.getElementById("empty").textContent = "Не удалось загрузить data.json. Запустите python run.py."; });
+
+["search","category","city","type","fresh"].forEach(id =>
+  document.getElementById(id).addEventListener("input", render));
+
+// клик по тегу на карточке добавляет его в фильтр
+document.getElementById("grid").addEventListener("click", e => {
+  const t = e.target.closest(".tg");
+  if(t){ toggleTag(t.dataset.tag); window.scrollTo({top:0, behavior:"smooth"}); }
+});
+</script>
+</body>
+</html>
