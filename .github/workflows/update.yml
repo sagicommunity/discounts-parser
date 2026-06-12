@@ -1,0 +1,33 @@
+name: Обновление скидок
+
+# Запуск по расписанию (UTC). 04:00 и 13:00 UTC = 09:00 и 18:00 по Алматы.
+# Плюс кнопка ручного запуска во вкладке Actions.
+on:
+  schedule:
+    - cron: "0 4,13 * * *"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Скачать код
+        uses: actions/checkout@v4
+
+      - name: Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Установить зависимости
+        run: pip install -r requirements.txt
+
+      - name: Собрать скидки из Telegram-каналов
+        run: python run.py
+
+      - name: Опубликовать сайт на Vercel
+        working-directory: site
+        env:
+          VERCEL_ORG_ID: team_qHemd62Mfi8aNIrfBTc18aAw
+          VERCEL_PROJECT_ID: prj_wmT9FzEA65PNR0nucRWu1pP5PSK6
+        run: npx --yes vercel deploy --prod --yes --token="${{ secrets.VERCEL_TOKEN }}"
