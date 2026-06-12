@@ -1,0 +1,14 @@
+# Логи и состояние
+update.log
+launchd*.log
+telegram_state.json
+
+# Vercel
+.vercel
+
+# Python
+__pycache__/
+*.pyc
+
+# Системное
+.DS_Store

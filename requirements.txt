@@ -1,0 +1,4 @@
+requests>=2.31
+beautifulsoup4>=4.12
+# Для сайтов на JavaScript (Chocolife, Kaspi, Magnum и т.п.):
+# playwright>=1.44
