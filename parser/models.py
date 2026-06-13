@@ -194,6 +194,60 @@ def normalize_category(raw: Optional[str]) -> str:
 
 # --- Модель --------------------------------------------------------------
 
+# --- Реестр мерчантов ----------------------------------------------------
+# Канонический магазин -> список алиасов (как пишут в постах, в нижнем
+# регистре). Нужно, чтобы из текста поста вытащить магазин и потом ходить
+# к источнику напрямую (API/Playwright). Латиница и кириллица — оба варианта.
+_MERCHANTS = {
+    "Magnum":      ["magnum", "магнум", "magnum go", "магнум гоу"],
+    "Small":       ["small", "смолл"],
+    "Arbuz":       ["arbuz", "арбуз"],
+    "Galmart":     ["galmart", "галмарт"],
+    "Anvar":       ["anvar", "анвар"],
+    "Toimart":     ["toimart", "тоймарт"],
+    "Ramstore":    ["ramstore", "рамстор"],
+    "Kaspi":       ["kaspi", "каспи", "магазин на каспи"],
+    "Mechta":      ["mechta", "мечта"],
+    "Technodom":   ["technodom", "технодом"],
+    "Sulpak":      ["sulpak", "сулпак"],
+    "Alser":       ["alser", "алсер"],
+    "Sportmaster": ["sportmaster", "спортмастер"],
+    "LC Waikiki":  ["lcwaikiki", "lc waikiki", "lcw", "вайкики"],
+    "Gloria Jeans":["gloria jeans", "глория джинс"],
+    "Flip":        ["flip.kz", "flip "],
+    "Teez":        ["teez"],
+    "Temu":        ["temu", "тему"],
+    "Wolt":        ["wolt", "волт"],
+    "Glovo":       ["glovo", "глово"],
+    "Yandex":      ["яндекс", "yandex", "лавка", "яндекс go", "яндекс еда"],
+    "inDrive":     ["indrive", "индрайв"],
+    "Starbucks":   ["starbucks", "старбакс"],
+    "Dodo Pizza":  ["dodo", "додо"],
+    "Bellissimo":  ["bellissimo", "беллиссимо"],
+    "Chocofamily": ["chocofamily", "chocolife", "чоколайф"],
+    "Halyk":       ["halyk", "халык", "халык банк"],
+    "Kaspi Bank":  ["kaspi bank"],
+    "Bereke":      ["bereke", "береке"],
+    "Freedom":     ["freedom", "фридом"],
+    "Forte":       ["forte", "форте"],
+}
+
+
+def infer_merchant(title: str, description: str) -> Optional[str]:
+    """Вытаскивает магазин/бренд из текста поста. None, если не нашли."""
+    text = f" {title} {description} ".lower().replace("\n", " ")
+    best = None
+    best_len = 0
+    for canonical, aliases in _MERCHANTS.items():
+        for alias in aliases:
+            # граница слова, чтобы 'small' не ловился внутри других слов
+            pat = r"(?<![a-zа-яё0-9])" + re.escape(alias) + r"(?![a-zа-яё0-9])"
+            if re.search(pat, text):
+                if len(alias) > best_len:   # длинный алиас приоритетнее
+                    best, best_len = canonical, len(alias)
+    return best
+
+
 @dataclass
 class Deal:
     """Одно предложение: скидка, акция, бонус или распродажа."""
@@ -210,6 +264,7 @@ class Deal:
     new_price: Optional[float] = None
     currency: str = "₸"
     image: Optional[str] = None     # URL картинки
+    merchant: Optional[str] = None  # Магазин/бренд (Magnum, Small, ...) — для реестра мерчантов
     starts_at: Optional[str] = None # ISO дата начала
     ends_at: Optional[str] = None   # ISO дата окончания
     tags: list = field(default_factory=list)  # Теги по аудитории/поводу
@@ -223,6 +278,8 @@ class Deal:
         if self.category == "Прочее":
             self.category = infer_category(self.title, self.description)
         self.city = normalize_city(self.city)
+        if self.merchant is None:
+            self.merchant = infer_merchant(self.title, self.description)
         if not self.tags:
             self.tags = infer_tags(self.title, self.description,
                                    self.category, self.deal_type)
