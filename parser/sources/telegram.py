@@ -40,7 +40,8 @@ except ImportError:
 # Каналы для мониторинга: (username без @, человекочитаемое имя источника)
 CHANNELS = [
     ("morepodeshevle", "Ещё Подешевле"),
-    ("podeshevlekz", "Казахстан Подешевле"),
+    # podeshevlekz отключён: много статей-советов с ложными % в тексте.
+    # ("podeshevlekz", "Казахстан Подешевле"),
     ("bsaver_a", "Budget Saver"),
 ]
 
@@ -59,23 +60,62 @@ DEAL_MARKERS = [
 # Шаблон цены в тексте (для дополнительной проверки «это точно оффер»)
 _PRICE_RE = re.compile(r"\d[\d\s]{1,}\s*(?:тг|₸|тенге)", re.IGNORECASE)
 
-# Заголовки-вопросы в стиле статьи/совета (не оффер сам по себе)
+# Заголовки-вопросы и рекомендательные посты в стиле статьи/совета (не оффер)
 _ARTICLE_RE = re.compile(
     r"^\s*(как |почему |зачем |реально ли|правда ли|сколько |стоит ли|"
-    r"что делать|что выбрать|знали ли|а вы знали|где взять|где найти|лайфхак)",
+    r"что делать|что выбрать|знали ли|а вы знали|где взять|где найти|лайфхак|"
+    r"находки |топ[ -]\d|обзор |советы |гид по|рейтинг |что стоит|"
+    r"нужно ли|можно ли|когда лучше|стоит покупать|используй|"
+    r"расскаж|объясн|разбираем|делимся|всё о |всё про )",
     re.IGNORECASE)
 
 # Сильные признаки конкретного оффера (оставляем пост даже если заголовок-вопрос)
 _STRONG_OFFER = ["промокод", "бесплатн", "в подарок", "купон",
                  "за 1 тенге", "за 1 тг", "1+1", "2+1", "2=1"]
 
+# Слова, характерные для финансовых советов / лайфхаков — без реальной скидки
+_FINANCE_ADVICE_RE = re.compile(
+    r"(накоплени|пенсионн|кредитн[^а-я]|платеж|налог[^а-я]|финансов|"
+    r"сбережени|бюджет[^а-я]|инвестиц|вклад[^а-я]|депозит|страхов|"
+    r"рефинансир|льгот[^а-я]|субсиди|пособи)",
+    re.IGNORECASE)
+
 
 def _is_article(title: str, text: str) -> bool:
     """True, если пост похож на статью/совет, а не на конкретный оффер."""
-    if not _ARTICLE_RE.match(title):
-        return False
     low = text.lower()
-    return not any(m in low for m in _STRONG_OFFER)
+    # Сначала проверяем сильные признаки реального оффера — такой пост не трогаем
+    if any(m in low for m in _STRONG_OFFER):
+        return False
+
+    # Признаки конкретного оффера: явная цена в тенге или пара старая/новая цена.
+    old, new = _extract_prices(text)
+    has_concrete_offer = bool(old and new) or bool(_PRICE_RE.search(low))
+    has_discount_word = any(w in low for w in [
+        "скидк", "акци", "распродаж", "кешбэк", "кэшбэк", "sale", "дарим", "промокод"
+    ])
+
+    # Первые несколько строк поста — там обычно заголовок/вопрос, даже если
+    # _make_title подцепил другую строку (эмодзи/бренд). Проверяем их целиком.
+    head = "\n".join(text.split("\n")[:3])
+
+    # Заголовок-вопрос или совет (по title и по «шапке» поста).
+    if _ARTICLE_RE.match(title) or _ARTICLE_RE.search(head):
+        # Заголовок-статья пропускаем только если есть конкретный оффер
+        # (реальная цена в тенге). Один голый «%» в тексте не спасает —
+        # это чаще «концентрация 20%», «теряете 15% дохода» и т.п.
+        if not has_concrete_offer:
+            return True
+
+    # Вопросительный заголовок без конкретного оффера — это статья.
+    first_line = (text.split("\n")[0] if text else "").strip()
+    if "?" in first_line and not has_concrete_offer and not has_discount_word:
+        return True
+
+    # Финансовый/советный контент с % но без конкретной цены и без слова «скидка»
+    if _FINANCE_ADVICE_RE.search(text) and not has_concrete_offer and not has_discount_word:
+        return True
+    return False
 
 # Месяцы для разбора срока «до 5 июня»
 _MONTHS = {
@@ -85,13 +125,28 @@ _MONTHS = {
 
 
 def _extract_discount(text: str) -> Optional[str]:
-    """Находит размер скидки: 50%, до 70%, 1+1, 2=1."""
+    """Находит размер скидки: 50%, до 70%, 1+1, 2=1.
+    Требует контекст «это именно скидка», чтобы не захватывать
+    посторонние проценты («концентрация 15%», «в 3 раза»).
+    """
     for pat in [r"1\s*\+\s*1", r"2\s*\+\s*1", r"2\s*=\s*1", r"3\s*=\s*2"]:
         if re.search(pat, text):
             return re.search(pat, text).group(0).replace(" ", "")
-    m = re.search(r"(?:до\s*)?-?\s*(\d{1,2})\s*%", text)
-    if m:
-        return f"-{m.group(1)}%"
+    # Паттерны с явным признаком скидки
+    contextual = [
+        # -40%, −40% в начале строки или после пробела/символа
+        (r"(?:^|[\s(«–—])-\s*(\d{1,2})\s*%", 1),
+        # скидка/скидки/скидкой 30%, скидки до 70%
+        (r"скидк\w*\s+(?:до\s+)?(\d{1,2})\s*%", 1),
+        # N% скидки / N% кешбэк / N% бонусов
+        (r"(\d{1,2})\s*%\s*(?:скидк|кешбэк|кэшбэк|бонус|cashback)", 1),
+        # до N% (без слова «скидка», но всё равно признак)
+        (r"\bдо\s+(\d{1,2})\s*%", 1),
+    ]
+    for pat, grp in contextual:
+        m = re.search(pat, text, re.IGNORECASE | re.MULTILINE)
+        if m:
+            return f"-{m.group(grp)}%"
     return None
 
 
@@ -244,7 +299,8 @@ class TelegramChannelSource(BaseSource):
             if not discount and old and new and new < old:
                 discount = f"-{round((old - new) / old * 100)}%"
             # отсев статей-вопросов без конкретного оффера
-            if _is_article(title, text) and not (discount or new):
+            # (даже если в тексте есть % — это часто «концентрация 20%», а не скидка)
+            if _is_article(title, text):
                 continue
             deals.append(Deal(
                 title=title,
